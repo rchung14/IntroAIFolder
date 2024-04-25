@@ -46,6 +46,23 @@ public class TetrisQAgent
 
     public Random getRandom() { return this.random; }
 
+    // @Override
+    // public Model initQFunction() {
+    //     final int numFeatures = Board.NUM_COLS * Board.NUM_ROWS;  
+    //     final int firstHiddenDim = 2 * numFeatures;  
+    //     final int secondHiddenDim = numFeatures / 2; 
+    //     final int outputDim = 1;  
+
+    //     Sequential qFunction = new Sequential();
+    //     qFunction.add(new Dense(numFeatures, firstHiddenDim));
+    //     qFunction.add(new ReLU());
+    //     qFunction.add(new Dense(firstHiddenDim, secondHiddenDim));
+    //     qFunction.add(new ReLU());
+    //     qFunction.add(new Dense(secondHiddenDim, outputDim));
+
+    //     return qFunction;
+    // }
+
     @Override
     public Model initQFunction() {
         final int numPixels = Board.NUM_ROWS * Board.NUM_COLS;
@@ -81,6 +98,58 @@ public class TetrisQAgent
         "state" of the game without relying on the pixels? If you were given
         a tetris game midway through play, what properties would you look for?
      */
+    // @Override
+    // public Matrix getQFunctionInput(final GameView game, final Mino potentialAction) {
+    //     try { 
+    //         // game board 
+    //         Board gameBoard = game.getBoard(); 
+
+    //         // flatten grayscale image to single row vector
+    //         Matrix grayscaleImage = game.getGrayscaleImage(potentialAction);
+    //         int numPixels = Board.NUM_ROWS * Board.NUM_COLS;
+    //         Matrix inputVector = Matrix.zeros(1, numPixels);
+
+    //         for (int row = 0; row < Board.NUM_ROWS; row++) {
+    //             for (int col = 0; col < Board.NUM_COLS; col++) {
+    //                 double pixelValue = grayscaleImage.get(row, col);
+    //                 inputVector.set(0, row * Board.NUM_COLS + col, pixelValue);
+    //             }
+    //         }
+
+    //         // FEATURE SELECTION
+
+    //         int gameScore = game.getScoreThisTurn();  
+    //         int totalScore = game.getTotalScore();
+    //         int nextMino = getNextMino(game); 
+    //         int numHoles = getNumberOfHoles(gameBoard); 
+    //         int bumpiness = getBumpiness(gameBoard); 
+    //         int maxHeight = getMaxHeight(gameBoard); 
+    //         int minHeight = getMinHeight(gameBoard);
+    //         int totalHeight = getTotalHeight(gameBoard); 
+    //         int numTransitions = getTransitions(gameBoard);
+    //         int wellSum = calculateWellSums(gameBoard);
+    //         int blockades = countBlockades(gameBoard);
+            
+    //         // features --> matrix
+    //         inputVector.set(0, 0, gameScore);
+    //         inputVector.set(0, 1, nextMino);
+    //         inputVector.set(0, 2, totalScore);
+    //         inputVector.set(0, 3, numHoles);
+    //         inputVector.set(0, 4, bumpiness);
+    //         inputVector.set(0, 5, maxHeight);
+    //         inputVector.set(0, 6, minHeight);
+    //         inputVector.set(0, 7, totalHeight);
+    //         inputVector.set(0, 8, numTransitions);
+    //         inputVector.set(0, 9, wellSum);
+    //         inputVector.set(0, 10, blockades);
+
+    //         return inputVector;
+    //     }
+    //         catch (Exception e) {
+    //         e.printStackTrace();
+    //         return null; 
+    //     }
+    // }
 
     @Override
     public Matrix getQFunctionInput(final GameView game, final Mino potentialAction) {
@@ -108,12 +177,9 @@ public class TetrisQAgent
                 getMaxHeight(game.getBoard()),
                 getMinHeight(game.getBoard()),
                 getTotalHeight(game.getBoard()),
-                // getTransitions(game.getBoard()),
-                // calculateWellSums(game.getBoard()),
-                // countBlockades(game.getBoard())
-                0,
-                0,
-                0 // placeholders
+                getTransitions(game.getBoard()),
+                calculateWellSums(game.getBoard()),
+                countBlockades(game.getBoard())
             };
 
             for (int i = 0; i < numAdditionalFeatures; i++) {
@@ -227,55 +293,55 @@ public class TetrisQAgent
         return totalHeight;
     }
 
-    // private int getTransitions(Board board) {
-    //     int transitions = 0;
-    //     for (int row = 0; row < Board.NUM_ROWS; row++) {
-    //         for (int col = 0; col < Board.NUM_COLS - 1; col++) {
-    //             if (board.isCoordinateOccupied(col, row) != board.isCoordinateOccupied(col + 1, row)) {
-    //                 transitions++;
-    //             }
-    //         }
-    //     }
-    //     for (int col = 0; col < Board.NUM_COLS; col++) {
-    //         for (int row = 0; row < Board.NUM_ROWS - 1; row++) {
-    //             if (board.isCoordinateOccupied(col, row) != board.isCoordinateOccupied(col, row + 1)) {
-    //                 transitions++;
-    //             }
-    //         }
-    //     }
-    //     return transitions;
-    // }
+    private int getTransitions(Board board) {
+        int transitions = 0;
+        for (int row = 0; row < Board.NUM_ROWS; row++) {
+            for (int col = 0; col < Board.NUM_COLS - 1; col++) {
+                if (board.isCoordinateOccupied(col, row) != board.isCoordinateOccupied(col + 1, row)) {
+                    transitions++;
+                }
+            }
+        }
+        for (int col = 0; col < Board.NUM_COLS; col++) {
+            for (int row = 0; row < Board.NUM_ROWS - 1; row++) {
+                if (board.isCoordinateOccupied(col, row) != board.isCoordinateOccupied(col, row + 1)) {
+                    transitions++;
+                }
+            }
+        }
+        return transitions;
+    }
 
-    // private int calculateWellSums(Board board) {
-    //     int wellSum = 0;
-    //     for (int col = 0; col < Board.NUM_COLS; col++) {
-    //         for (int row = Board.NUM_ROWS - 1; row >= 0; row--) {
-    //             if (!board.isCoordinateOccupied(col, row)) {
-    //                 int depth = 1;
-    //                 while (--row >= 0 && !board.isCoordinateOccupied(col, row)) {
-    //                     depth++;
-    //                 }
-    //                 wellSum += depth;
-    //             }
-    //         }
-    //     }
-    //     return wellSum;
-    // }
+    private int calculateWellSums(Board board) {
+        int wellSum = 0;
+        for (int col = 0; col < Board.NUM_COLS; col++) {
+            for (int row = Board.NUM_ROWS - 1; row >= 0; row--) {
+                if (!board.isCoordinateOccupied(col, row)) {
+                    int depth = 1;
+                    while (--row >= 0 && !board.isCoordinateOccupied(col, row)) {
+                        depth++;
+                    }
+                    wellSum += depth;
+                }
+            }
+        }
+        return wellSum;
+    }
 
-    // private int countBlockades(Board board) {
-    //     int blockades = 0;
-    //     for (int col = 0; col < Board.NUM_COLS; col++) {
-    //         boolean holeFound = false;
-    //         for (int row = Board.NUM_ROWS - 1; row >= 0; row--) {
-    //             if (board.isCoordinateOccupied(col, row) && holeFound) {
-    //                 blockades++;
-    //             } else if (!board.isCoordinateOccupied(col, row)) {
-    //                 holeFound = true;
-    //             }
-    //         }
-    //     }
-    //     return blockades;
-    // }    
+    private int countBlockades(Board board) {
+        int blockades = 0;
+        for (int col = 0; col < Board.NUM_COLS; col++) {
+            boolean holeFound = false;
+            for (int row = Board.NUM_ROWS - 1; row >= 0; row--) {
+                if (board.isCoordinateOccupied(col, row) && holeFound) {
+                    blockades++;
+                } else if (!board.isCoordinateOccupied(col, row)) {
+                    holeFound = true;
+                }
+            }
+        }
+        return blockades;
+    }    
     
     /**
      * This method is used to decide if we should follow our current policy
@@ -384,18 +450,14 @@ public class TetrisQAgent
         Board board = game.getBoard();
 
         // Calculate penalties and bonuses
-        double penaltyForHeight = 2000;
-        // if difference from max height to longest stack is > 0
-        if (Board.NUM_ROWS - getMaxHeight(board) > 0) {
-            penaltyForHeight = (1 / (Board.NUM_ROWS-getMaxHeight(board))) * 1000; 
-        }
-
+        double penaltyForHeight = getMaxHeight(board) / (double) Board.NUM_ROWS * 10;  
         double penaltyForHoles = getNumberOfHoles(board) * 2;  
         double penaltyForBumpiness = getBumpiness(board) * 0.5; 
-        // double penaltyForBlockades = countBlockades(board) * 1.5; 
+        double penaltyForBlockades = countBlockades(board) * 1.5; 
+        double bonusForWells = calculateWellSums(board) * 0.1; 
 
         // Adjust reward calculation
-        double reward = score - penaltyForHeight - penaltyForHoles - penaltyForBumpiness;
+        double reward = score - penaltyForHeight - penaltyForHoles - penaltyForBumpiness - penaltyForBlockades + bonusForWells;
 
         return reward;
     }
