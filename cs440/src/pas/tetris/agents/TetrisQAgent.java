@@ -48,9 +48,11 @@ public class TetrisQAgent
 
     @Override
     public Model initQFunction() {
-        final int numFeatures = Board.NUM_COLS * Board.NUM_ROWS;  
-        final int firstHiddenDim = 2 * numFeatures;  
-        final int secondHiddenDim = numFeatures / 2; 
+        final int numPixels = Board.NUM_ROWS * Board.NUM_COLS;
+        final int numAdditionalFeatures = 11;
+        final int numFeatures = numPixels + numAdditionalFeatures;  
+        final int firstHiddenDim = numFeatures / 2;  
+        final int secondHiddenDim = firstHiddenDim / 2; 
         final int outputDim = 1;  
 
         Sequential qFunction = new Sequential();
@@ -58,10 +60,11 @@ public class TetrisQAgent
         qFunction.add(new ReLU());
         qFunction.add(new Dense(firstHiddenDim, secondHiddenDim));
         qFunction.add(new ReLU());
-        qFunction.add(new Dense(secondHiddenDim, outputDim));
+        qFunction.add(new Dense(secondHiddenDim, outputDim)); 
 
         return qFunction;
     }
+
 
     /**
         This function is for you to figure out what your features
@@ -78,64 +81,54 @@ public class TetrisQAgent
         "state" of the game without relying on the pixels? If you were given
         a tetris game midway through play, what properties would you look for?
      */
+
     @Override
     public Matrix getQFunctionInput(final GameView game, final Mino potentialAction) {
         try { 
-            // game board 
-            Board gameBoard = game.getBoard(); 
+            // Flatten grayscale image to single row vector
+            Matrix grayscaleImage = game.getGrayscaleImage(potentialAction).flatten();
+            int numPixels = Board.NUM_COLS * Board.NUM_ROWS;
 
-            // flatten grayscale image to single row vector
-            Matrix grayscaleImage = game.getGrayscaleImage(potentialAction);
-            int numPixels = Board.NUM_ROWS * Board.NUM_COLS;
-            Matrix inputVector = Matrix.zeros(1, numPixels);
+            // Additional features
+            int numAdditionalFeatures = 11;
+            Matrix inputVector = Matrix.zeros(1, numPixels + numAdditionalFeatures);
 
-            for (int row = 0; row < Board.NUM_ROWS; row++) {
-                for (int col = 0; col < Board.NUM_COLS; col++) {
-                    double pixelValue = grayscaleImage.get(row, col);
-                    inputVector.set(0, row * Board.NUM_COLS + col, pixelValue);
-                }
+            // Set grayscale pixels
+            for (int i = 0; i < numPixels; i++) {
+                inputVector.set(0, i, grayscaleImage.get(0, i));
             }
 
-            // FEATURE SELECTION
+            // Extract and set additional features
+            int[] features = {
+                game.getScoreThisTurn(),
+                getNextMino(game),
+                game.getTotalScore(),
+                getNumberOfHoles(game.getBoard()),
+                getBumpiness(game.getBoard()),
+                getMaxHeight(game.getBoard()),
+                getMinHeight(game.getBoard()),
+                getTotalHeight(game.getBoard()),
+                // getTransitions(game.getBoard()),
+                // calculateWellSums(game.getBoard()),
+                // countBlockades(game.getBoard())
+                0,
+                0,
+                0 // placeholders
+            };
 
-            // game score
-            int gameScore = game.getScoreThisTurn();  
-            // total score 
-            int totalScore = game.getTotalScore();
-            // next mino type
-            int nextMino = getNextMino(game); 
-            // number of holes
-            int numHoles = getNumberOfHoles(gameBoard); 
-            // bumpiness 
-            int bumpiness = getBumpiness(gameBoard); 
-            // max height
-            int maxHeight = getMaxHeight(gameBoard); 
-            // min height 
-            int minHeight = getMinHeight(gameBoard);
-            // total height
-            int totalHeight = getTotalHeight(gameBoard); 
-            
-
-            // features --> matrix
-            inputVector.set(0, 0, gameScore);
-            inputVector.set(0, 1, nextMino);
-            inputVector.set(0, 2, totalScore);
-            inputVector.set(0, 3, numHoles);
-            inputVector.set(0, 4, bumpiness);
-            inputVector.set(0, 5, maxHeight);
-            inputVector.set(0, 6, minHeight);
-            inputVector.set(0, 7, totalHeight);
+            for (int i = 0; i < numAdditionalFeatures; i++) {
+                inputVector.set(0, numPixels + i, features[i]);
+            }
 
             return inputVector;
-        }
-            catch (Exception e) {
+            
+        } catch (Exception e) {
             e.printStackTrace();
             return null; 
         }
     }
 
     // helper functions for features
-
     private int getNextMino(GameView game) { 
         Mino.MinoType nextMino = null;
         List<Mino.MinoType> nextMinos = game.getNextThreeMinoTypes(); 
@@ -233,7 +226,56 @@ public class TetrisQAgent
         }
         return totalHeight;
     }
-    
+
+    // private int getTransitions(Board board) {
+    //     int transitions = 0;
+    //     for (int row = 0; row < Board.NUM_ROWS; row++) {
+    //         for (int col = 0; col < Board.NUM_COLS - 1; col++) {
+    //             if (board.isCoordinateOccupied(col, row) != board.isCoordinateOccupied(col + 1, row)) {
+    //                 transitions++;
+    //             }
+    //         }
+    //     }
+    //     for (int col = 0; col < Board.NUM_COLS; col++) {
+    //         for (int row = 0; row < Board.NUM_ROWS - 1; row++) {
+    //             if (board.isCoordinateOccupied(col, row) != board.isCoordinateOccupied(col, row + 1)) {
+    //                 transitions++;
+    //             }
+    //         }
+    //     }
+    //     return transitions;
+    // }
+
+    // private int calculateWellSums(Board board) {
+    //     int wellSum = 0;
+    //     for (int col = 0; col < Board.NUM_COLS; col++) {
+    //         for (int row = Board.NUM_ROWS - 1; row >= 0; row--) {
+    //             if (!board.isCoordinateOccupied(col, row)) {
+    //                 int depth = 1;
+    //                 while (--row >= 0 && !board.isCoordinateOccupied(col, row)) {
+    //                     depth++;
+    //                 }
+    //                 wellSum += depth;
+    //             }
+    //         }
+    //     }
+    //     return wellSum;
+    // }
+
+    // private int countBlockades(Board board) {
+    //     int blockades = 0;
+    //     for (int col = 0; col < Board.NUM_COLS; col++) {
+    //         boolean holeFound = false;
+    //         for (int row = Board.NUM_ROWS - 1; row >= 0; row--) {
+    //             if (board.isCoordinateOccupied(col, row) && holeFound) {
+    //                 blockades++;
+    //             } else if (!board.isCoordinateOccupied(col, row)) {
+    //                 holeFound = true;
+    //             }
+    //         }
+    //     }
+    //     return blockades;
+    // }    
     
     /**
      * This method is used to decide if we should follow our current policy
@@ -251,31 +293,27 @@ public class TetrisQAgent
      * strategy here.
      */
     
-    private double explore = 1.0;
-    private final double min = 0.01;
-    private final double decay = 0.995;
-
     @Override
-    public boolean shouldExplore(final GameView game, final GameCounter gameCounter) {
-        explore *= decay;
-        explore = Math.max(min, explore);
-        return getRandom().nextDouble() < explore;
+    public boolean shouldExplore(final GameView game,
+                                final GameCounter gameCounter)
+    {
+        return this.getRandom().nextDouble() <= EXPLORATION_PROB;
     }
-
 
     /**
      * This method is a counterpart to the "shouldExplore" method. Whenever we decide
-     * that we should ignore our policy, we now have to actually choose an action.
-     *
-     * You should come up with a way of choosing an action so that the model gets
-     * to experience something new. The current implemention just chooses a random
-     * option, which in practice doesn't work as well as a more guided strategy.
-     * I would recommend devising your own strategy here.
-     */
+    * that we should ignore our policy, we now have to actually choose an action.
+    *
+    * You should come up with a way of choosing an action so that the model gets
+    * to experience something new. The current implemention just chooses a random
+    * option, which in practice doesn't work as well as a more guided strategy.
+    * I would recommend devising your own strategy here.
+    */
     @Override
-    public Mino getExplorationMove(final GameView game) {
-        List<Mino> finalPositions = game.getFinalMinoPositions();
-        return finalPositions.get(getRandom().nextInt(finalPositions.size()));
+    public Mino getExplorationMove(final GameView game)
+    {
+        int randIdx = this.getRandom().nextInt(game.getFinalMinoPositions().size());
+        return game.getFinalMinoPositions().get(randIdx);
     }
 
 
@@ -342,9 +380,37 @@ public class TetrisQAgent
      */
     @Override
     public double getReward(final GameView game) {
-        double score = game.getScoreThisTurn();
-        int numberOfHoles = getNumberOfHoles(game.getBoard());
-        return score - (5 * numberOfHoles);
-    }
+        double score = game.getScoreThisTurn() * 100;  // Base score from the game, which is increased to make other adjustments significant
+        Board board = game.getBoard();
 
+        // penalties
+        double penaltyForHeight = 2000;
+        if (Board.NUM_ROWS - getMaxHeight(board) > 0) {
+            penaltyForHeight = (1 / (Board.NUM_ROWS - getMaxHeight(board))) * 1000;
+        }
+
+        double penaltyForHoles = getNumberOfHoles(board) * 2;  
+        double penaltyForBumpiness = getBumpiness(board) * 0.5; 
+
+        // rewards
+        int mostFilledBlocks = 0;
+        for (int row = 0; row < Board.NUM_ROWS; row++) {
+            int filledBlocksInRow = 0;
+            for (int col = 0; col < Board.NUM_COLS; col++) {
+                if (board.isCoordinateOccupied(col, row)) {
+                    filledBlocksInRow++;
+                }
+            }
+            // Only add bonus for rows that are not completely filled
+            if (filledBlocksInRow > 0 && filledBlocksInRow < Board.NUM_COLS) {
+                mostFilledBlocks = Math.max(mostFilledBlocks, filledBlocksInRow);
+            }
+        }
+        double lineCompletionReadinessBonus = mostFilledBlocks * 5; 
+
+        double reward = score - penaltyForHeight - penaltyForHoles - penaltyForBumpiness + lineCompletionReadinessBonus;
+
+        return reward;
+    }
 }
+
