@@ -380,37 +380,23 @@ public class TetrisQAgent
      */
     @Override
     public double getReward(final GameView game) {
-        double score = game.getScoreThisTurn() * 100;  // Base score from the game, which is increased to make other adjustments significant
+        double score = game.getScoreThisTurn();
         Board board = game.getBoard();
 
-        // penalties
+        // Calculate penalties and bonuses
         double penaltyForHeight = 2000;
+        // if difference from max height to longest stack is > 0
         if (Board.NUM_ROWS - getMaxHeight(board) > 0) {
-            penaltyForHeight = (1 / (Board.NUM_ROWS - getMaxHeight(board))) * 1000;
+            penaltyForHeight = (1 / (Board.NUM_ROWS-getMaxHeight(board))) * 1000; 
         }
 
         double penaltyForHoles = getNumberOfHoles(board) * 2;  
         double penaltyForBumpiness = getBumpiness(board) * 0.5; 
+        // double penaltyForBlockades = countBlockades(board) * 1.5; 
 
-        // rewards
-        int mostFilledBlocks = 0;
-        for (int row = 0; row < Board.NUM_ROWS; row++) {
-            int filledBlocksInRow = 0;
-            for (int col = 0; col < Board.NUM_COLS; col++) {
-                if (board.isCoordinateOccupied(col, row)) {
-                    filledBlocksInRow++;
-                }
-            }
-            // Only add bonus for rows that are not completely filled
-            if (filledBlocksInRow > 0 && filledBlocksInRow < Board.NUM_COLS) {
-                mostFilledBlocks = Math.max(mostFilledBlocks, filledBlocksInRow);
-            }
-        }
-        double lineCompletionReadinessBonus = mostFilledBlocks * 5; 
-
-        double reward = score - penaltyForHeight - penaltyForHoles - penaltyForBumpiness + lineCompletionReadinessBonus;
+        // Adjust reward calculation
+        double reward = score - penaltyForHeight - penaltyForHoles - penaltyForBumpiness;
 
         return reward;
     }
 }
-
