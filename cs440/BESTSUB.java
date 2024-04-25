@@ -344,30 +344,17 @@ public class TetrisQAgent
      * (unless you have a long hole waiting for an I-block). When you design a reward
      * signal that is less sparse, you should see your model optimize this reward over time.
      */
-    // CURRENTLY TESTING THIS OUT -- REFER TO BESTSUB.JAVA FOR GETREWARD
     @Override
     public double getReward(final GameView game) {
         double score = game.getScoreThisTurn() * 10;
         Board board = game.getBoard();
 
-        double penaltyForHeight = getMaxHeight(board) * 5;
-        double penaltyForHoles = getNumberOfHoles(board) * 1.6;
-        double penaltyForBumpiness = getBumpiness(board) * 4;
+        double penaltyForHeight = getMaxHeight(board) * 5;  
+        double penaltyForHoles = getNumberOfHoles(board) * 1.6;  
+        double penaltyForBumpiness = getBumpiness(board) * 4; 
 
-        double[] rowFillLevels = new double[Board.NUM_ROWS];
-        for (int row = 0; row < Board.NUM_ROWS; row++) {
-            for (int col = 0; col < Board.NUM_COLS; col++) {
-                if (board.isCoordinateOccupied(col, row)) {
-                    rowFillLevels[row] += 1;
-                }
-            }
-        }
+        double reward = score - penaltyForHeight - penaltyForHoles - penaltyForBumpiness;
 
-        double meanFillLevel = Arrays.stream(rowFillLevels).average().orElse(0);
-        double variance = Arrays.stream(rowFillLevels).map(fillLevel -> (fillLevel - meanFillLevel) * (fillLevel - meanFillLevel)).average().orElse(0);
-        double penaltyForRowConsistency = Math.sqrt(variance) * 10;
-
-        double reward = score - penaltyForHeight - penaltyForHoles - penaltyForBumpiness - penaltyForRowConsistency;
         return reward;
     }
 }
