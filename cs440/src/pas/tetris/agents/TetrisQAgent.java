@@ -347,27 +347,38 @@ public class TetrisQAgent
     // CURRENTLY TESTING THIS OUT -- REFER TO BESTSUB.JAVA FOR GETREWARD
     @Override
     public double getReward(final GameView game) {
-        double score = game.getScoreThisTurn() * 10;
+        double score = game.getScoreThisTurn();
+        double exponentialScore = Math.exp(score / 100.0) * 10;
         Board board = game.getBoard();
 
         double penaltyForHeight = getMaxHeight(board) * 5;
-        double penaltyForHoles = getNumberOfHoles(board) * 1.6;
-        double penaltyForBumpiness = getBumpiness(board) * 4;
+        double penaltyForHoles = getNumberOfHoles(board) * 2;
+        double penaltyForBumpiness = getBumpiness(board) * 0.5;
+        double penaltyForWhiteSpace = 0.0;  
 
-        double[] rowFillLevels = new double[Board.NUM_ROWS];
-        for (int row = 0; row < Board.NUM_ROWS; row++) {
-            for (int col = 0; col < Board.NUM_COLS; col++) {
-                if (board.isCoordinateOccupied(col, row)) {
-                    rowFillLevels[row] += 1;
+        double rewardForProximityToLineCompletion = 0.0;
+        int cols = Board.NUM_COLS; 
+        int rows = Board.NUM_ROWS;
+
+        for (int i = 0; i < rows; i++) { 
+            int occupied = 0;
+            for (int j = 0; j < cols; j++) {  
+                if (board.isCoordinateOccupied(j, i)) { 
+                    occupied++;
                 }
+            }
+            int emptySpaces = cols - occupied;
+
+            if (emptySpaces > 0 && emptySpaces <= 1) {  
+                rewardForProximityToLineCompletion += Math.pow(3, (occupied));
+            }
+            else { 
+                penaltyForWhiteSpace += Math.pow(2, emptySpaces);
             }
         }
 
-        double meanFillLevel = Arrays.stream(rowFillLevels).average().orElse(0);
-        double variance = Arrays.stream(rowFillLevels).map(fillLevel -> (fillLevel - meanFillLevel) * (fillLevel - meanFillLevel)).average().orElse(0);
-        double penaltyForRowConsistency = Math.sqrt(variance) * 10;
-
-        double reward = score - penaltyForHeight - penaltyForHoles - penaltyForBumpiness - penaltyForRowConsistency;
+        double reward = exponentialScore - penaltyForHeight - penaltyForHoles - penaltyForBumpiness - penaltyForWhiteSpace + rewardForProximityToLineCompletion;
         return reward;
     }
+
 }
