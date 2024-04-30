@@ -3,11 +3,12 @@ package src.pas.tetris.agents;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 // SYSTEM IMPORTS
 import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
-
+import java.util.stream.Collectors;
 
 // JAVA PROJECT IMPORTS
 import edu.bu.tetris.agents.QAgent;
@@ -41,27 +42,10 @@ public class TetrisQAgent
     public TetrisQAgent(String name)
     {
         super(name);
-        this.random = new Random(12345); // optional to have a seed
+        this.random = new Random(); // optional to have a seed
     }
 
     public Random getRandom() { return this.random; }
-
-    // @Override
-    // public Model initQFunction() {
-    //     final int numFeatures = Board.NUM_COLS * Board.NUM_ROWS;  
-    //     final int firstHiddenDim = 2 * numFeatures;  
-    //     final int secondHiddenDim = numFeatures / 2; 
-    //     final int outputDim = 1;  
-
-    //     Sequential qFunction = new Sequential();
-    //     qFunction.add(new Dense(numFeatures, firstHiddenDim));
-    //     qFunction.add(new ReLU());
-    //     qFunction.add(new Dense(firstHiddenDim, secondHiddenDim));
-    //     qFunction.add(new ReLU());
-    //     qFunction.add(new Dense(secondHiddenDim, outputDim));
-
-    //     return qFunction;
-    // }
 
     @Override
     public Model initQFunction() {
@@ -283,6 +267,7 @@ public class TetrisQAgent
     }
 
 
+
     /**
      * This method is called by the TrainerAgent after we have played enough training games.
      * In between the training section and the evaluation section of a phase, we need to use
@@ -347,38 +332,34 @@ public class TetrisQAgent
     // CURRENTLY TESTING THIS OUT -- REFER TO BESTSUB.JAVA FOR GETREWARD
     @Override
     public double getReward(final GameView game) {
-        double score = game.getScoreThisTurn();
-        double exponentialScore = Math.exp(score / 100.0) * 10;
-        Board board = game.getBoard();
+        double score = game.getScoreThisTurn() * 10;
+        Board gameBoard = game.getBoard();
+        double penaltyForHeight = getMaxHeight(gameBoard) * 0.2;
+        double penaltyForHoles = getNumberOfHoles(gameBoard) * 1.5;
+        double penaltyForBumpiness = getBumpiness(gameBoard) * 0.5;
+        double penaltyForWhiteSpace = 0.0;
 
-        double penaltyForHeight = getMaxHeight(board) * 5;
-        double penaltyForHoles = getNumberOfHoles(board) * 2;
-        double penaltyForBumpiness = getBumpiness(board) * 0.5;
-        double penaltyForWhiteSpace = 0.0;  
-
-        double rewardForProximityToLineCompletion = 0.0;
-        int cols = Board.NUM_COLS; 
+        int cols = Board.NUM_COLS;
         int rows = Board.NUM_ROWS;
-
-        for (int i = 0; i < rows; i++) { 
+        double rewardForLineCompletion = 0.0;
+        
+        for (int i = 0; i < rows; i++) {
             int occupied = 0;
-            for (int j = 0; j < cols; j++) {  
-                if (board.isCoordinateOccupied(j, i)) { 
+            for (int j = 0; j < cols; j++) {
+                if (game.getBoard().isCoordinateOccupied(j, i)) {
                     occupied++;
                 }
             }
             int emptySpaces = cols - occupied;
-
-            if (emptySpaces > 0 && emptySpaces <= 1) {  
-                rewardForProximityToLineCompletion += Math.pow(3, (occupied));
+            if (emptySpaces > 0 && emptySpaces < 2) {
+                rewardForLineCompletion += Math.pow(2, occupied); 
             }
-            else { 
-                penaltyForWhiteSpace += Math.pow(2, emptySpaces);
+            else {
+                penaltyForWhiteSpace += 1; 
             }
         }
 
-        double reward = exponentialScore - penaltyForHeight - penaltyForHoles - penaltyForBumpiness - penaltyForWhiteSpace + rewardForProximityToLineCompletion;
+        double reward = score - (penaltyForHeight + penaltyForHoles + penaltyForBumpiness + penaltyForWhiteSpace) + rewardForLineCompletion;
         return reward;
     }
-
 }
